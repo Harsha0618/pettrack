@@ -269,4 +269,11 @@ class PetService {
           return pets;
         });
   }
+    // <--- Add it here! --->
+  Future<List<PetModel>> getAllPetsOnce() async {
+    final snapshot = await _firestore.collection('pets').get();
+    return snapshot.docs
+        .map((doc) => PetModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+        .toList();
+  }
 }

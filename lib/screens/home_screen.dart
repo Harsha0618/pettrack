@@ -154,6 +154,9 @@ import 'package:pettrack/screens/pet_detail_screen.dart';
 import 'package:pettrack/services/auth_service.dart';
 import 'package:pettrack/services/pet_service.dart';
 import 'package:pettrack/models/pet_model.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
@@ -481,13 +484,63 @@ class PetCard extends StatelessWidget {
 }
 
 // Map Tab - Shows pets on map
-class MapTab extends StatelessWidget {
+class MapTab extends StatefulWidget {
   const MapTab({Key? key}) : super(key: key);
 
   @override
+  State<MapTab> createState() => _MapTabState();
+}
+
+class _MapTabState extends State<MapTab> {
+  final PetService _petService = PetService();
+  List<Marker> _markers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPetMarkers();
+  }
+
+  Future<void> _loadPetMarkers() async {
+    final pets = await _petService.getAllPetsOnce();
+    setState(() {
+      _markers = pets
+          .where((pet) => pet.latitude != null && pet.longitude != null)
+          .map((pet) => Marker(
+                width: 40,
+                height: 40,
+                point: LatLng(pet.latitude, pet.longitude),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => PetDetailScreen(petId: pet.id!),
+                    ));
+                  },
+                  child: Icon(
+                    Icons.pets,
+                    color: pet.status == 'lost' ? Colors.red : Colors.green,
+                    size: 36,
+                  ),
+                ),
+              ))
+          .toList();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Map will be shown here'),
+    return FlutterMap(
+      options: MapOptions(
+        initialCenter: LatLng(20.5937, 78.9629), // Center of India, change as needed
+        initialZoom: 4,
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+          userAgentPackageName: 'com.example.pettrack',
+        ),
+        MarkerLayer(markers: _markers),
+      ],
     );
   }
 }
